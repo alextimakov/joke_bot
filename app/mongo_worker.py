@@ -1,5 +1,6 @@
 import app.config as config
 import pymongo
+from enum import Enum
 
 client = pymongo.MongoClient(config.db_url)
 db = client[config.db_name]
@@ -34,12 +35,6 @@ def update_one(collection, condition, cond_value, **values):
         db[collection].update_one({condition: cond_value}, {"$set": {column: column_value}})
 
 
-def update_many(collection, column, column_value, condition, cond_value):
-    db[collection].update_many(filter={condition: {"$elemMatch": {"$in": [cond_value]}}},
-                               update={"$set": {column+".$[el]": column_value}},
-                               array_filters=[{'el': cond_value}])
-
-
 def insert(collection, **values):
     db[collection].insert_one(values)
 
@@ -48,5 +43,11 @@ def remove_one(collection, column, condition, cond_value):
     db[collection].update({condition: cond_value}, {"$unset": {column: 1}})
 
 
-def counter(collection):
-    return db[collection].count_documents({})
+class States(Enum):
+    START = "0"
+    MENU = "1"
+    SET_STATE = "2"
+    NEWS = "3"
+    ATTACH = "4"
+    NO_ATTACH = "5"
+    NEWS_TYPE = "6"

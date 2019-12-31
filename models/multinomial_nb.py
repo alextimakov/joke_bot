@@ -43,6 +43,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import f1_score
 
 # +
 # merge all files from ./data
@@ -78,7 +79,7 @@ y = df['position']
 labelencoder = LabelEncoder()
 y = labelencoder.fit_transform(y)
 X = df['text']
-X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.2, random_state=1234)
+X_train, X_test, y_train, y_test = train_test_split(X, y,test_size=0.2, random_state=42)
 
 # +
 # defining the bag-of-words transformer on the text-processed corpus
@@ -99,10 +100,11 @@ model = model.fit(text_bow_train, y_train)
 print('Точность модели на обучающей выборке = {}%'.format(round(model.score(text_bow_train, y_train), 3)))
 print('Точность модели на валидационной выборке = {}%'.format(round(model.score(text_bow_test, y_test), 3)))
 
+f1 = f1_score(y_test, model.predict(text_bow_test), average='weighted', labels=np.unique(model.predict(text_bow_test)))
+print("F1 Score for test = {}%".format(f1 * 100))
+
 # check the position of possible author 
 text = input('Введите текст для проверки работы модели')
 to_predict = np.array(text).reshape(1,)
 text_bow_val = bow_transformer.transform(to_predict)
 print(labelencoder.inverse_transform(model.predict(text_bow_val)))
-
-
