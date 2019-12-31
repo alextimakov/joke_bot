@@ -73,10 +73,10 @@ def set_state(update: Update, context: CallbackContext):
     utils.assign_state(user.id, mg.States.SET_STATE.value)
     if update.message.text == new_comment['RU']:
         enter_new_comment(update, context)
-        return mg.States.NO_ATTACH
+        return mg.States.ADD_COMMENT
     elif update.message.text == predict_menu['RU']:
         select_model(update, context)
-        return mg.States.EDIT_MODERATOR
+        return mg.States.MAKE_PREDICT
     elif update.message.text == reset_menu['RU']:
         reset_comments(update, context)
         return mg.States.MENU
