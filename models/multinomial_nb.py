@@ -112,6 +112,10 @@ import pickle
 with open('sasha_model.pkl', 'wb') as fid:
     pickle.dump(model, fid)
 
+with open('sasha_labelencoder.pkl', 'wb') as le:
+    pickle.dump(labelencoder, le)
 
+with open('sasha_transformer.pkl', 'wb') as bt:
+    pickle.dump(bow_transformer, bt)
 
 

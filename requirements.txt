@@ -9,6 +9,7 @@ certifi==2019.11.28       # via python-telegram-bot
 cffi==1.13.2              # via cryptography
 cryptography==2.8         # via python-telegram-bot
 future==0.18.2            # via python-telegram-bot
+numpy==1.18.0
 pycparser==2.19           # via cffi
 pymongo==3.10.0
 python-dateutil==2.8.1    # via bson

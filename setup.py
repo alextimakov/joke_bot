@@ -19,7 +19,7 @@ setup(
     ],
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),  # Required
     python_requires='>=3.5, <4',  # Required
-    install_requires=['python-telegram-bot', 'pymongo', 'bson'],  # Optional
+    install_requires=['python-telegram-bot', 'pymongo', 'bson', 'numpy'],  # Optional
     entry_points={  # Optional
         'console_scripts': [
             'app=app:main',

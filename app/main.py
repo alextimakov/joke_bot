@@ -4,6 +4,7 @@ import app.utils as utils
 from app.scripts import *
 import os
 import pickle
+import numpy as np
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters, CallbackContext
 import logging.config
@@ -128,15 +129,22 @@ def make_prediction(update: Update, context: CallbackContext):
     logger.info("Make prediction by user {}.".format(user.id))
     utils.assign_state(user.id, mg.States.MAKE_PREDICT.value)
     author_id = utils.select_user_attribute(user.id, '_id')
-    selected_model = '' + '.pkl'
+    selected_model = 'sasha' + '_model.pkl'
     with open(selected_model, 'rb') as fid:
         model = pickle.load(fid)
     user_comments = mg.select_many('comments', 'comment', **{'author_id': ObjectId(author_id)})
-    # transfer to np.array
-    model_result = model.predict(user_comments)
-    # convert predict result to human-readable format
+    user_comments = np.array(user_comments).reshape(len(user_comments),)
+    result_transformer = 'sasha' + '_transformer.pkl'
+    with open(result_transformer, 'rb') as bt:
+        transformer = pickle.load(bt)
+    result_encoder = 'sasha' + '_labelencoder.pkl'
+    with open(result_encoder, 'rb') as le:
+        encoder = pickle.load(le)
+    model_result = encoder.inverse_transform(model.predict(transformer.transform(user_comments)))
+    model_result = max(set(list(model_result)), key=list(model_result).count)
     model_result = 'Скорее всего, Вы - {RESULT}'.format(RESULT=model_result)
-    mg.insert('predictions', **{'author_id': author_id, 'model': selected_model, 'model_result': model_result})
+    mg.insert('predictions', **{'author_id': author_id, 'model': selected_model,
+                                'model_result': model_result})
     reply_markup = ReplyKeyboardMarkup([[back2menu['RU']]], one_time_keyboard=True, resize_keyboard=True)
     bot.send_message(chat_id=user.id, text=model_result, reply_markup=reply_markup)
     return mg.States.MENU
