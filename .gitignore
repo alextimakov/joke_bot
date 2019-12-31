@@ -127,3 +127,18 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# source data
+*.html
+*.txt
+*.csv
+
+# bot config files
+app/config.py
+
+# models
+*.ipynb
+models/.ipynb_checkpoints
+
+# pycharm stuff
+.idea/
