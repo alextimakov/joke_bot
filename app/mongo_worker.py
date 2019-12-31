@@ -43,11 +43,15 @@ def remove_one(collection, column, condition, cond_value):
     db[collection].update({condition: cond_value}, {"$unset": {column: 1}})
 
 
+def add_to_array(collection, condition, cond_value, **values):
+    for column, column_value in values.items():
+        db[collection].update_one({condition: cond_value}, {"$push": {column: column_value}})
+
+
 class States(Enum):
     START = "0"
     MENU = "1"
     SET_STATE = "2"
-    NEWS = "3"
-    ATTACH = "4"
-    NO_ATTACH = "5"
-    NEWS_TYPE = "6"
+    ADD_COMMENT = "3"
+    MAKE_PREDICT = "4"
+    RESET_ALL = "5"

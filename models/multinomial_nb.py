@@ -20,10 +20,10 @@
 # https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
 #
 # ### Структура данных для обучения имела вид: 
-# author: str | text: str
+# position: str | text: str
 #
-# ### В качестве метрик качества была выбрана метрика Mean Accuracy
-# https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html#sklearn.naive_bayes.MultinomialNB.score
+# ### В качестве метрик качества была выбрана метрика F1 Score
+# https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
 
 # +
 from os import listdir
@@ -52,13 +52,15 @@ onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f)) and f != '.gi
 li = []
 
 for filename in onlyfiles:
-    df = pd.read_csv(mypath+filename, sep=',', names=['text', 'position'])
+    df = pd.read_excel(mypath+filename, names=['text', 'position'])
     li.append(df)
 # -
 
 # read data
 df = pd.concat(li, axis=0, ignore_index=True)
 df.dropna(inplace=True)
+for col in df.columns.tolist():
+    df[col] = df[col].astype(str)
 
 
 # Defining a module for Text Processing
@@ -96,15 +98,20 @@ text_bow_test = bow_transformer.transform(X_test)
 model = MultinomialNB()
 model = model.fit(text_bow_train, y_train)
 
-# get mean accuracy of model
-print('Точность модели на обучающей выборке = {}%'.format(round(model.score(text_bow_train, y_train), 3)))
-print('Точность модели на валидационной выборке = {}%'.format(round(model.score(text_bow_test, y_test), 3)))
-
 f1 = f1_score(y_test, model.predict(text_bow_test), average='weighted', labels=np.unique(model.predict(text_bow_test)))
 print("F1 Score for test = {}%".format(f1 * 100))
 
 # check the position of possible author 
-text = input('Введите текст для проверки работы модели')
-to_predict = np.array(text).reshape(1,)
-text_bow_val = bow_transformer.transform(to_predict)
-print(labelencoder.inverse_transform(model.predict(text_bow_val)))
+text = input('Введите текст для проверки работы модели\n')  # текст, вводимый пользователем
+to_predict = np.array(text).reshape(1,)  # преобразование в np.array
+text_bow_val = bow_transformer.transform(to_predict)  # предсказание
+print(labelencoder.inverse_transform(model.predict(text_bow_val)))  # перевод предсказания в читаемый результат
+
+# model to pickle
+import pickle
+with open('sasha_model.pkl', 'wb') as fid:
+    pickle.dump(model, fid)
+
+
+
+

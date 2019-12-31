@@ -3,9 +3,9 @@ import app.mongo_worker as mg
 import app.utils as utils
 from app.scripts import *
 import os
+import pickle
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, Filters, CallbackContext
-from telegram.error import TelegramError, Unauthorized
 import logging.config
 from bson.objectid import ObjectId
 
@@ -20,10 +20,29 @@ logger = logging.getLogger(__name__)
 
 
 def start(update: Update, context: CallbackContext):
-    # get tg_id
-    # check if in whitelist
-    # if yes then go to menu
-    return 1
+    user = update.message.from_user.id
+    bot = context.bot
+    if utils.select_user_attribute(user, 'tg_id'):
+        if not utils.select_user_attribute(user, 'state'):
+            utils.assign_state(user, mg.States.START.value)
+        state = utils.select_user_attribute(user, 'state')
+        logger.info("User {} in state {}".format(user, int(state)))
+        if update.message.text == new_comment['RU']:
+            enter_new_comment(update, context)
+            return mg.States.NO_ATTACH
+        elif update.message.text == predict_menu['RU']:
+            select_model(update, context)
+            return mg.States.EDIT_MODERATOR
+        elif update.message.text == reset_menu['RU']:
+            reset_comments(update, context)
+            return mg.States.MENU
+        else:
+            reply_markup = ReplyKeyboardMarkup([[back2menu['RU']]], one_time_keyboard=True, resize_keyboard=True)
+            bot.send_message(chat_id=user, text=state_menu['RU'], reply_markup=reply_markup)
+            return mg.States.MENU
+    else:
+        bot.send_message(chat_id=user, text=access_denied['RU'])
+        return mg.States.START
 
 
 def menu(update: Update, context: CallbackContext):
@@ -32,16 +51,17 @@ def menu(update: Update, context: CallbackContext):
     logger.info("Menu by user {}.".format(user.id))
     try:
         tg_id = utils.select_user_attribute(user.id, 'tg_id')
-        if tg_id and tg_id in config.whitelist:
-            # send keyboard
-            return mg.States.MENU
+        if tg_id:
+            keyboard = [[new_comment['RU']], [predict_menu['RU']], [reset_menu['RU']]]
+            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+            bot.send_message(chat_id=user.id, text=menu_text['RU'], reply_markup=reply_markup)
+            utils.assign_state(user.id, mg.States.MENU.value)
+            return mg.States.SET_STATE
         else:
-            bot.send_message(user.id, text='Отказано в доступе')
+            bot.send_message(user.id, text=access_denied['RU'])
     except AttributeError:
         bot.send_message(chat_id=user.id, text=access_denied['RU'])
         return mg.States.START
-
-
 
 
 def set_state(update: Update, context: CallbackContext):
@@ -51,7 +71,7 @@ def set_state(update: Update, context: CallbackContext):
         enter_new_comment(update, context)
         return mg.States.NO_ATTACH
     elif update.message.text == predict_menu['RU']:
-        predict(update, context)
+        select_model(update, context)
         return mg.States.EDIT_MODERATOR
     elif update.message.text == reset_menu['RU']:
         reset_comments(update, context)
@@ -62,34 +82,74 @@ def set_state(update: Update, context: CallbackContext):
 
 
 def enter_new_comment(update: Update, context: CallbackContext):
-    # send message with request to send new comment
-    return 1
+    user = update.message.from_user
+    bot = context.bot
+    logger.info("News by user {}".format(user.id))
+    bot.send_message(chat_id=user.id, text=add_comment['RU'])
+    return mg.States.ADD_COMMENT
 
 
 def comment_entered(update: Update, context: CallbackContext):
-    # read comment
-    # append it to users' comments
-    return 1
-
-
-def predict(update: Update, context: CallbackContext):
-    # call all users' comments
-    # check if any comments exists
-    # if true send keyboard with model selection
-    return 1
+    user = update.message.from_user
+    bot = context.bot
+    text = update.message.text
+    author_id = utils.select_user_attribute(user.id, '_id')
+    logger.info("Comment added {}".format(user.id))
+    utils.assign_state(user.id, mg.States.ADD_COMMENT.value)
+    if mg.select_one('comments', 'comment', **{'author_id': author_id}):
+        mg.add_to_array('comments', '_id', author_id, **{'comment': text})
+    else:
+        mg.insert('comments', **{'author_id': author_id, 'comment': text})
+    bot.send_message(chat_id=user.id, text=comment_added['RU'])
+    return mg.States.MENU
 
 
 def select_model(update: Update, context: CallbackContext):
-    # catch result of model selection
-    # read selected model
-    # upload them to model
-    # send back model result
-    # back to menu
-    return 1
+    user = update.message.from_user
+    bot = context.bot
+    logger.info("Select model by user {}.".format(user.id))
+    author_id = utils.select_user_attribute(user.id, '_id')
+    comments = mg.select_many('comments', 'comment', **{'author_id': ObjectId(author_id)})
+    if any(comments):
+        reply_markup = ReplyKeyboardMarkup([[model_1['RU'], model_2['RU']],
+                                            [model_3['RU'], model_4['RU']]],
+                                           one_time_keyboard=True, resize_keyboard=True)
+        bot.send_message(chat_id=user.id, text=choose_model['RU'], reply_markup=reply_markup)
+        return mg.States.MAKE_PREDICT
+    else:
+        reply_markup = ReplyKeyboardMarkup([[back2menu['RU']]], one_time_keyboard=True, resize_keyboard=True)
+        bot.send_message(chat_id=user.id, text=no_comments['RU'], reply_markup=reply_markup)
+        return mg.States.MENU
+
+
+def make_prediction(update: Update, context: CallbackContext):
+    user = update.message.from_user
+    bot = context.bot
+    logger.info("Make prediction by user {}.".format(user.id))
+    utils.assign_state(user.id, mg.States.MAKE_PREDICT.value)
+    author_id = utils.select_user_attribute(user.id, '_id')
+    selected_model = '' + '.pkl'
+    with open(selected_model, 'rb') as fid:
+        model = pickle.load(fid)
+    user_comments = mg.select_many('comments', 'comment', **{'author_id': ObjectId(author_id)})
+    # transfer to np.array
+    model_result = model.predict(user_comments)
+    # convert predict result to human-readable format
+    model_result = 'Скорее всего, Вы - {RESULT}'.format(RESULT=model_result)
+    mg.insert('predictions', **{'author_id': author_id, 'model': selected_model, 'model_result': model_result})
+    reply_markup = ReplyKeyboardMarkup([[back2menu['RU']]], one_time_keyboard=True, resize_keyboard=True)
+    bot.send_message(chat_id=user.id, text=model_result, reply_markup=reply_markup)
+    return mg.States.MENU
 
 
 def reset_comments(update: Update, context: CallbackContext):
-    return 1
+    user = update.message.from_user
+    bot = context.bot
+    logger.info("User {} reset all comments".format(user.id))
+    utils.assign_state(user.id, mg.States.RESET_ALL.value)
+    reply_markup = ReplyKeyboardMarkup([[back2menu['RU']]], one_time_keyboard=True, resize_keyboard=True)
+    bot.send_message(chat_id=user.id, text=all_reset['RU'], reply_markup=reply_markup)
+    return mg.States.MENU
 
 
 def cancel(update: Update, context: CallbackContext):
@@ -128,7 +188,11 @@ def main():
             mg.States.SET_STATE: [MessageHandler(Filters.regex('^({}|{}|{})$'.format(
                     new_comment['RU'], predict_menu['RU'], reset_menu['RU'])), set_state)],
 
-            mg.States.
+            mg.States.ADD_COMMENT: [MessageHandler(Filters.text, comment_entered)],
+
+            mg.States.MAKE_PREDICT: [MessageHandler(Filters.text, make_prediction)],
+
+            mg.States.RESET_ALL: [CommandHandler('reset_all', reset_comments)]
 
         },
 

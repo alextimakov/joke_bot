@@ -132,6 +132,8 @@ dmypy.json
 *.html
 models/*.txt
 *.csv
+*.xlsx
+*.pkl
 
 # bot config files
 app/config.py
