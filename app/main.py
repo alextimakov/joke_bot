@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.abspath('.'))
+
 import app.config as config
 import app.mongo_worker as mg
 import app.utils as utils

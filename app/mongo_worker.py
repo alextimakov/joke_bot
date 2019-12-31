@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.abspath('.'))
+
 import app.config as config
 import pymongo
 from enum import Enum
