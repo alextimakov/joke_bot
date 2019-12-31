@@ -103,19 +103,19 @@ print("F1 Score for test = {}%".format(f1 * 100))
 
 # check the position of possible author 
 text = input('Введите текст для проверки работы модели\n')  # текст, вводимый пользователем
-to_predict = np.array(text).reshape(1,)  # преобразование в np.array
+to_predict = np.array(text).reshape(len(text),)  # преобразование в np.array
 text_bow_val = bow_transformer.transform(to_predict)  # предсказание
-print(labelencoder.inverse_transform(model.predict(text_bow_val)))  # перевод предсказания в читаемый результат
+lst = labelencoder.inverse_transform(model.predict(text_bow_val))
+print(max(set(list(lst)), key=list(lst).count)) # перевод предсказания в читаемый результат
 
+# +
 # model to pickle
 import pickle
-with open('sasha_model.pkl', 'wb') as fid:
+with open('model.pkl', 'wb') as fid:
     pickle.dump(model, fid)
-
-with open('sasha_labelencoder.pkl', 'wb') as le:
+    
+with open('labelencoder.pkl', 'wb') as le:
     pickle.dump(labelencoder, le)
-
-with open('sasha_transformer.pkl', 'wb') as bt:
+    
+with open('transformer.pkl', 'wb') as bt:
     pickle.dump(bow_transformer, bt)
-
-

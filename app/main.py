@@ -1,11 +1,11 @@
-import sys, os
+import sys
+import os
 sys.path.append(os.path.abspath('.'))
 
 import app.config as config
 import app.mongo_worker as mg
 import app.utils as utils
 from app.scripts import *
-import os
 import pickle
 import numpy as np
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
@@ -132,15 +132,16 @@ def make_prediction(update: Update, context: CallbackContext):
     logger.info("Make prediction by user {}.".format(user.id))
     utils.assign_state(user.id, mg.States.MAKE_PREDICT.value)
     author_id = utils.select_user_attribute(user.id, '_id')
-    selected_model = 'sasha' + '_model.pkl'
+    selected_user = 'sasha'
+    selected_model = selected_user + '_model.pkl'
     with open(selected_model, 'rb') as fid:
         model = pickle.load(fid)
     user_comments = mg.select_many('comments', 'comment', **{'author_id': ObjectId(author_id)})
     user_comments = np.array(user_comments).reshape(len(user_comments),)
-    result_transformer = 'sasha' + '_transformer.pkl'
+    result_transformer = selected_user + '_transformer.pkl'
     with open(result_transformer, 'rb') as bt:
         transformer = pickle.load(bt)
-    result_encoder = 'sasha' + '_labelencoder.pkl'
+    result_encoder = selected_user + '_labelencoder.pkl'
     with open(result_encoder, 'rb') as le:
         encoder = pickle.load(le)
     model_result = encoder.inverse_transform(model.predict(transformer.transform(user_comments)))
