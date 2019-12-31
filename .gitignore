@@ -130,7 +130,7 @@ dmypy.json
 
 # source data
 *.html
-*.txt
+models/*.txt
 *.csv
 
 # bot config files
